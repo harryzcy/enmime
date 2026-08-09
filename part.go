@@ -42,6 +42,15 @@ type Part struct {
 	Charset           string            // The content charset encoding, may differ from charset in header.
 	OrigCharset       string            // The original content charset when a different charset was detected.
 
+	// ContentTransferEncoding forces the Content-Transfer-Encoding header to the specified
+	// value when encoding this part. Valid values are "7bit", "8bit", "base64", and
+	// "quoted-printable". When empty, the encoding is selected automatically.
+	// Unrecognised values fall back to automatic detection.
+	//
+	// Content is not validated against the chosen encoding; the caller is responsible for
+	// RFC compliance (e.g. ensuring content forced to "7bit" is ASCII-safe).
+	ContentTransferEncoding string
+
 	Errors        []*Error  // Errors encountered while parsing this part.
 	Content       []byte    // Content after decoding, UTF-8 conversion if applicable.
 	ContentReader io.Reader // Reader interface for pulling the content for encoding.
@@ -375,18 +384,19 @@ func (p *Part) Clone(parent *Part) *Part {
 	}
 
 	newPart := &Part{
-		PartID:      p.PartID,
-		Header:      p.Header,
-		Parent:      parent,
-		Boundary:    p.Boundary,
-		ContentID:   p.ContentID,
-		ContentType: p.ContentType,
-		Disposition: p.Disposition,
-		FileName:    p.FileName,
-		Charset:     p.Charset,
-		Errors:      p.Errors,
-		Content:     p.Content,
-		Epilogue:    p.Epilogue,
+		PartID:                  p.PartID,
+		Header:                  p.Header,
+		Parent:                  parent,
+		Boundary:                p.Boundary,
+		ContentID:               p.ContentID,
+		ContentType:             p.ContentType,
+		Disposition:             p.Disposition,
+		FileName:                p.FileName,
+		Charset:                 p.Charset,
+		ContentTransferEncoding: p.ContentTransferEncoding,
+		Errors:                  p.Errors,
+		Content:                 p.Content,
+		Epilogue:                p.Epilogue,
 	}
 	newPart.FirstChild = p.FirstChild.Clone(newPart)
 	newPart.NextSibling = p.NextSibling.Clone(parent)
@@ -518,5 +528,12 @@ func (p *Part) WithEncoder(e *Encoder) *Part {
 	if e != nil {
 		p.encoder = e
 	}
+	return p
+}
+
+// WithContentTransferEncoding sets the ContentTransferEncoding field on this Part,
+// forcing the specified Content-Transfer-Encoding when encoding.
+func (p *Part) WithContentTransferEncoding(cte string) *Part {
+	p.ContentTransferEncoding = cte
 	return p
 }
